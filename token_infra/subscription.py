@@ -11,6 +11,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+_SECONDS_PER_DAY = 86400
+
 
 @dataclass(frozen=True)
 class TierLimits:
@@ -159,7 +161,7 @@ class SubscriptionRateLimiter:
     def _rotate_day(self) -> None:
         """Reset daily counters if a new day has started (24h window)."""
         now = time.time()
-        if now - self._day_start >= 86400:
+        if now - self._day_start >= _SECONDS_PER_DAY:
             self._daily_tokens_used = 0
             self._daily_requests = 0
             self._day_start = now

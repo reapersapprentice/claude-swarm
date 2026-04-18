@@ -71,7 +71,7 @@ class ClaudeAdapter:
                     text = "".join(part.text for part in response.content if getattr(part, "type", "") == "text")
                 if self.subscription_limiter is not None:
                     usage = getattr(response, "usage", None)
-                    used = (getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)) if usage else self._estimate_request_tokens(system_prompt, user_prompt, len(text.split()))
+                    used = (getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)) if usage else self._estimate_request_tokens(system_prompt, user_prompt, max_tokens)
                     self.subscription_limiter.record_usage(used)
                 return text
             except Exception as exc:  # pragma: no cover - network behavior
