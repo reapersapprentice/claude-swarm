@@ -1,0 +1,20 @@
+swarm:
+  name: "claude-swarm"
+  version: "1.0.0"
+  max_total_tokens: 50000
+  max_execution_time: 300
+  retry_failed_nodes: true
+  max_retries: 2
+  cache_results: true
+  dry_run: false
+
+model:
+  provider: "claude"
+  default_model: "claude-sonnet-4-20250514"
+  temperature: 0.0
+
+output:
+  format: "structured"
+  include_metrics: true
+  save_artifacts: true
+  artifacts_dir: ".swarm_output"
