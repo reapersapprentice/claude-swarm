@@ -6,6 +6,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
+from token_infra.compression import CompressionPipeline
+from token_infra.retrieval_pipeline import RetrievalPipeline
+from token_infra.vector_store import VectorStore
+
 from .execution_graph import ExecutionGraph, Node, NodeState
 
 
@@ -35,12 +39,25 @@ class SwarmResult:
 class SwarmController:
     """Central orchestrator for agent execution across a DAG."""
 
-    def __init__(self, registry: Any, router: Any, memory: Any, optimizer: Any, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        registry: Any,
+        router: Any,
+        memory: Any,
+        optimizer: Any,
+        config: Optional[Dict[str, Any]] = None,
+        vector_store: Optional[VectorStore] = None,
+        retrieval_pipeline: Optional[RetrievalPipeline] = None,
+        compression_pipeline: Optional[CompressionPipeline] = None,
+    ) -> None:
         self.registry = registry
         self.router = router
         self.memory = memory
         self.optimizer = optimizer
         self.config = config or {}
+        self.vector_store = vector_store
+        self.retrieval_pipeline = retrieval_pipeline
+        self.compression_pipeline = compression_pipeline
         self.pre_task_hooks: List[Callable[[Node, Dict[str, str]], None]] = []
         self.post_task_hooks: List[Callable[[Node, NodeResult], None]] = []
 
@@ -93,7 +110,8 @@ class SwarmController:
                         break
                     if not retries_enabled:
                         break
-                assert last_result is not None
+                if last_result is None:
+                    raise RuntimeError(f"Node '{node.id}' produced no result after all attempts")
                 node_results[node.id] = last_result
                 if not last_result.success and not node.optional:
                     break
@@ -125,12 +143,16 @@ class SwarmController:
 
         agent = self.registry.get(node.agent)
         context_text = "\n\n".join(value for value in context.values() if value)
+        if self.retrieval_pipeline and self.vector_store:
+            context_text = self.retrieval_pipeline.inject_context(node.task, context_text)
         optimized = self.optimizer.compress(context_text, task=node.task, agent_name=node.agent)
 
         cached = self.memory.get("results", f"{node.agent}:{node.task}:{optimized}")
         if cached is not None:
             node.state = NodeState.COMPLETED
             node.result = str(cached)
+            if self.vector_store is not None:
+                self.vector_store.add_document(node.id, node.result, metadata={"agent": node.agent, "task": node.task})
             result = NodeResult(node_id=node.id, output=node.result, cached=True, tokens_used=0)
             for hook in self.post_task_hooks:
                 hook(node, result)
@@ -139,12 +161,16 @@ class SwarmController:
         try:
             response = agent.run(node.task, optimized)
             output = str(response.raw_output if hasattr(response, "raw_output") else response)
+            if self.compression_pipeline is not None:
+                output = self.compression_pipeline.compress(output, task=node.task, max_tokens=getattr(agent, "token_budget", None))
             tokens_used = int(getattr(response, "tokens_used", self.optimizer.estimate_tokens(node.task + " " + optimized + " " + output)))
             self.optimizer.enforce_budget(tokens_used, getattr(agent, "token_budget", None))
             self.optimizer.record_usage(tokens_used)
             node.result = output
             node.state = NodeState.COMPLETED
             self.memory.set("results", f"{node.agent}:{node.task}:{optimized}", output)
+            if self.vector_store is not None:
+                self.vector_store.add_document(node.id, output, metadata={"agent": node.agent, "task": node.task})
             result = NodeResult(node_id=node.id, output=output, tokens_used=tokens_used)
         except Exception as exc:  # pragma: no cover - safety catch
             node.state = NodeState.FAILED

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 from typing import Any
 
 from memory.context_cache import ContextCache
@@ -30,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def get_controller(pipeline: str):
+def get_controller(pipeline: str) -> Any:
     """Construct controller based on selected pipeline."""
     if pipeline == "research":
         return build_research_pipeline()

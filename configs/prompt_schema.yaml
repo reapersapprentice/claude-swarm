@@ -1,0 +1,122 @@
+rulesets:
+  T0: "Return machine-readable output only."
+  T1: "Use concise, deterministic phrasing."
+  T2: "Preserve critical technical constraints."
+  T3: "No markdown fences or decorative prose."
+  T4: "Include edge cases and failure modes."
+  T5: "Prioritize correctness over verbosity."
+  T6: "Prefer explicit structure over ambiguity."
+  T7: "Keep outputs self-contained and executable."
+  T8: "Avoid repeating unchanged context."
+  T9: "Respect role objective and output schema."
+
+templates:
+  CODE_REVIEW: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output schema:
+    {{"issues": ["..."], "approved": true, "suggestions": ["..."]}}
+
+  SQL_GEN: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Return SQL only.
+
+  BUG_ANALYSIS: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output schema:
+    {{"root_cause": "...", "fix": "...", "risk": "..."}}
+
+  ANALYZE_STRUCT: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output schema:
+    {{"summary": "...", "highlights": ["..."]}}
+
+  TMP:PLAN: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Decompose into atomic execution nodes.
+    Return JSON array with fields id, agent, task, dependencies, optional.
+
+  TMP:RESEARCH: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output JSON object only:
+    {{"findings": ["..."], "sources": ["..."], "summary": "..."}}
+
+  TMP:CODE_GEN: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output JSON object only:
+    {{"files": [{{"path": "...", "content": "..."}}], "explanation": "..."}}
+
+  TMP:CODE_REVIEW: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output JSON object only:
+    {{"issues": ["..."], "approved": true, "suggestions": ["..."]}}
+
+  TMP:TEST_GEN: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output JSON object only:
+    {{"tests": [{{"name": "...", "code": "..."}}], "coverage_notes": "..."}}
+
+  TMP:SUMMARIZE: |
+    Task:
+    {task}
+
+    Context:
+    {context}
+
+    Output JSON object only:
+    {{"summary": "...", "highlights": ["..."]}}
+
+role_blocks:
+  ROLE_ENGINEER: "You are a senior software engineer focused on robust implementation."
+  ROLE_ANALYST: "You are a systems analyst focused on facts, evidence, and constraints."
+  ROLE_WRITER: "You are a technical writer producing concise, structured outputs."
+  ROLE_REVIEWER: "You are a strict reviewer checking correctness, security, and maintainability."
+  ROLE_PLANNER: "You are a planning specialist producing deterministic execution DAGs."
+  ROLE_RESEARCHER: "You are a research specialist collecting and organizing relevant context."
+  ROLE_CODER: "You are a coding specialist producing production-grade implementation artifacts."
+  ROLE_TESTER: "You are a testing specialist designing high-coverage test plans and code."
+  ROLE_SUMMARIZER: "You are a summarization specialist merging outputs into compact final results."
