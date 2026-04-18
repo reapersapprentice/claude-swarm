@@ -14,6 +14,7 @@ from core import AgentRegistry, StateStore, SwarmController, TaskRouter, TokenOp
 from token_infra.compression import CompressionPipeline
 from token_infra.prompt_builder import PromptBuilder
 from token_infra.retrieval_pipeline import RetrievalPipeline
+from token_infra.subscription import SubscriptionRateLimiter
 from token_infra.token_budget import TokenBudget
 from token_infra.vector_store import VectorStore
 
@@ -146,7 +147,12 @@ def build_registry(
 
 
 def build_controller(model: ModelInterface, config: Dict[str, Any], token_config: Optional[Dict[str, Any]] = None) -> SwarmController:
-    """Build fully configured SwarmController instance."""
+    """Build fully configured SwarmController instance.
+
+    When the config contains a ``subscription`` section, a
+    :class:`SubscriptionRateLimiter` is attached to the controller so
+    downstream code (and adapters) can enforce subscription-tier limits.
+    """
     limits_path = Path("configs/agent_limits.yaml")
     limits = yaml.safe_load(limits_path.read_text(encoding="utf-8")) if limits_path.exists() else {}
     token_cfg = token_config or {}
@@ -154,6 +160,17 @@ def build_controller(model: ModelInterface, config: Dict[str, Any], token_config
     vector_store: Optional[VectorStore] = None
     retrieval_pipeline: Optional[RetrievalPipeline] = None
     compression_pipeline: Optional[CompressionPipeline] = None
+
+    # --- subscription rate limiter ---
+    sub_cfg = config.get("subscription", {})
+    subscription_limiter: Optional[SubscriptionRateLimiter] = None
+    if sub_cfg and sub_cfg.get("tier"):
+        overrides = {k: v for k, v in sub_cfg.items() if k != "tier"}
+        subscription_limiter = SubscriptionRateLimiter(
+            tier=sub_cfg["tier"],
+            overrides=overrides if overrides else None,
+        )
+
     if token_config is not None:
         prompt_builder = PromptBuilder(schema_path=token_cfg.get("prompt_schema_path", "configs/prompt_schema.yaml"))
         vector_store = VectorStore(
@@ -172,16 +189,22 @@ def build_controller(model: ModelInterface, config: Dict[str, Any], token_config
         prompt_builder=prompt_builder,
         budgets_path=token_cfg.get("budgets_path", "configs/budgets.yaml"),
     )
+
+    # Respect subscription max_tokens_per_request when setting per-agent cap
+    per_agent_cap = 4000
+    if subscription_limiter is not None:
+        per_agent_cap = min(per_agent_cap, subscription_limiter.limits.max_tokens_per_request)
+
     optimizer = TokenOptimizer(
         {
-            "max_tokens_per_agent": 4000,
+            "max_tokens_per_agent": per_agent_cap,
             "max_total_tokens": config.get("swarm", {}).get("max_total_tokens", 50000),
             "compression_threshold": 1000,
         }
     )
     router = TaskRouter("configs/routing_rules.yaml")
     memory = StateStore()
-    return SwarmController(
+    controller = SwarmController(
         registry=registry,
         router=router,
         memory=memory,
@@ -191,3 +214,5 @@ def build_controller(model: ModelInterface, config: Dict[str, Any], token_config
         retrieval_pipeline=retrieval_pipeline,
         compression_pipeline=compression_pipeline,
     )
+    controller.subscription_limiter = subscription_limiter
+    return controller

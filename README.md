@@ -394,6 +394,63 @@ Each agent has a token limit (configurable in `configs/agent_limits.yaml`). Ther
 
 Tokens are estimated using the `tiktoken` library when available (accurate, model-specific counting). If `tiktoken` isn't available, it falls back to a `words × 1.3` approximation — fast and dependency-free.
 
+### 6. Subscription Tier Awareness
+
+If you're on a Claude Pro (or similar) subscription, you probably don't want to exceed your plan limits and get charged for overage. The **Subscription Rate Limiter** (`token_infra/subscription.py`) enforces plan-level guardrails:
+
+- **Per-minute rate limits** — prevents bursts of requests that exceed your plan's API rate cap.
+- **Daily token caps** — tracks cumulative token usage across all agents and stops execution before you go over your daily allowance.
+- **Per-request token ceilings** — clamps the `max_tokens` parameter on every API call so no single response can blow through your budget.
+
+**Available tiers:**
+
+| Tier | Requests/min | Daily token cap | Max tokens/request |
+|------|-------------|-----------------|-------------------|
+| `free` | 5 | 25,000 | 1,024 |
+| `pro` | 25 | 300,000 | 4,096 |
+| `team` | 50 | 1,000,000 | 8,192 |
+| `unlimited` | 120 | No cap | 16,384 |
+
+**Set your tier** in `configs/swarm_config.yaml`:
+
+```yaml
+subscription:
+  tier: "pro"
+```
+
+Or override from the command line:
+
+```bash
+python -m cli.swarm_cli run --subscription-tier pro "build a REST API"
+```
+
+You can also customize individual limits while keeping the tier defaults for everything else:
+
+```yaml
+subscription:
+  tier: "pro"
+  daily_token_cap: 150000      # more conservative than the default 300k
+  requests_per_minute: 15      # slower pace
+```
+
+**Check your current usage** at any time:
+
+```bash
+python -m cli.swarm_cli subscription-status
+```
+
+**From Python code**, pass a `SubscriptionRateLimiter` to the `ClaudeAdapter`:
+
+```python
+from token_infra.subscription import SubscriptionRateLimiter
+from token_infra.adapters.claude_adapter import ClaudeAdapter
+
+limiter = SubscriptionRateLimiter(tier="pro")
+adapter = ClaudeAdapter(subscription_limiter=limiter)
+```
+
+The limiter is thread-safe and handles automatic backoff — if you hit the per-minute rate limit, `wait_if_needed()` pauses until capacity is available instead of failing. Daily caps are hard limits that raise a `SubscriptionError` to prevent unexpected charges.
+
 ### Token Infrastructure Layer
 
 For more advanced prompt management, the `token_infra/` package provides additional tools:
@@ -403,6 +460,7 @@ For more advanced prompt management, the `token_infra/` package provides additio
 - **CompressionPipeline** (`token_infra/compression.py`) — Deduplicates and prunes inter-agent outputs before they're passed downstream.
 - **RetrievalPipeline** (`token_infra/retrieval_pipeline.py`) — Queries the vector store for semantically similar past results and injects them into the current prompt.
 - **VectorStore** (`token_infra/vector_store.py`) — Dual-backend semantic search. Uses ChromaDB when installed, otherwise falls back to the built-in bag-of-words cosine similarity index.
+- **SubscriptionRateLimiter** (`token_infra/subscription.py`) — Plan-aware rate limiting and daily token caps (see above).
 
 To enable the full token infrastructure, pass a `token_config` when building a pipeline:
 
