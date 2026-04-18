@@ -150,6 +150,8 @@ class SwarmController:
         if cached is not None:
             node.state = NodeState.COMPLETED
             node.result = str(cached)
+            if self.vector_store is not None:
+                self.vector_store.add_document(node.id, node.result, metadata={"agent": node.agent, "task": node.task})
             result = NodeResult(node_id=node.id, output=node.result, cached=True, tokens_used=0)
             for hook in self.post_task_hooks:
                 hook(node, result)

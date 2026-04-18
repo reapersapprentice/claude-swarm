@@ -45,16 +45,17 @@ class OpenAIAdapter:
         last_error: Optional[Exception] = None
         for attempt in range(self.max_retries + 1):
             try:
-                response = self.client.responses.create(
+                response = self.client.chat.completions.create(
                     model=self.model,
-                    input=[
+                    messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
                     temperature=temperature,
-                    max_output_tokens=max_tokens,
+                    max_tokens=max_tokens,
                 )
-                return response.output_text
+                choice = response.choices[0].message
+                return choice.content or ""
             except Exception as exc:  # pragma: no cover - network behavior
                 last_error = exc
                 if attempt >= self.max_retries:

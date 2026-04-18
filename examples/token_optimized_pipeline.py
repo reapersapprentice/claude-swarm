@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from pipelines import build_repo_build_pipeline
+from pipelines.repo_build_pipeline import build_repo_build_pipeline
 
 
 def main() -> None:
