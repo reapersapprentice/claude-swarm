@@ -1,0 +1,19 @@
+strict:
+  prompt_limit: 800
+  response_limit: 600
+  soft_ratio: 0.80
+
+standard:
+  prompt_limit: 2000
+  response_limit: 1500
+  soft_ratio: 0.85
+
+extended:
+  prompt_limit: 8000
+  response_limit: 4096
+  soft_ratio: 0.90
+
+research:
+  prompt_limit: 16000
+  response_limit: 8192
+  soft_ratio: 0.90

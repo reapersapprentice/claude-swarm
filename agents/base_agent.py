@@ -9,6 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Protocol
 
+from token_infra.prompt_builder import PromptBuilder
+from token_infra.token_budget import TokenBudget
+
 
 class ModelInterface(Protocol):
     """Protocol to integrate any model backend."""
@@ -30,11 +33,26 @@ class AgentResult:
 class BaseAgent(ABC):
     """Abstract base class for all swarm agents."""
 
-    def __init__(self, name: str, prompt_path: str, model: ModelInterface, token_budget: int = 4000) -> None:
+    def __init__(
+        self,
+        name: str,
+        prompt_path: str,
+        model: ModelInterface,
+        token_budget: int = 4000,
+        prompt_builder: Optional[PromptBuilder] = None,
+        token_budget_manager: Optional[TokenBudget] = None,
+        template_key: Optional[str] = None,
+        role_key: Optional[str] = None,
+    ) -> None:
         self.name = name
+        self.prompt_path = prompt_path
         self.system_prompt = self._load_prompt(prompt_path)
         self.model = model
         self.token_budget = token_budget
+        self.prompt_builder = prompt_builder
+        self.token_budget_manager = token_budget_manager
+        self.template_key = template_key
+        self.role_key = role_key
         self._result_cache: Dict[str, AgentResult] = {}
 
     @abstractmethod
@@ -43,11 +61,27 @@ class BaseAgent(ABC):
 
     def call_model(self, task: str, context: str = "") -> str:
         """Invoke model using deterministic prompt envelope."""
+        system_prompt = self.system_prompt
         user_prompt = f"Task:\n{task}\n\nContext:\n{context}".strip()
+        if self.prompt_builder and self.template_key and self.role_key:
+            built_prompt = self.prompt_builder.build(
+                template_key=self.template_key,
+                role_key=self.role_key,
+                task=task,
+                context=context,
+            )
+            system_prompt = built_prompt.system_prompt or system_prompt
+            user_prompt = built_prompt.user_prompt
+            if self.token_budget_manager:
+                self.token_budget_manager.validate_prompt(f"{system_prompt}\n\n{user_prompt}")
+        elif self.token_budget_manager:
+            self.token_budget_manager.validate_prompt(f"{system_prompt}\n\n{user_prompt}")
         return self.model.generate(
-            system_prompt=self.system_prompt,
+            system_prompt=system_prompt,
             user_prompt=user_prompt,
-            max_tokens=self.token_budget,
+            max_tokens=min(self.token_budget, self.token_budget_manager.response_limit)
+            if self.token_budget_manager
+            else self.token_budget,
             temperature=0.0,
         )
 

@@ -1,1 +1,4 @@
 PyYAML>=6.0
+tiktoken>=0.7.0
+# Optional vector backend (fallback vector index is used when not installed)
+# chromadb>=0.5.0
