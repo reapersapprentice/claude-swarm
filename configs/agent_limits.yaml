@@ -1,0 +1,18 @@
+planner:
+  max_tokens: 3000
+  rate_limit_per_minute: 60
+researcher:
+  max_tokens: 5000
+  rate_limit_per_minute: 60
+coder:
+  max_tokens: 7000
+  rate_limit_per_minute: 60
+reviewer:
+  max_tokens: 4000
+  rate_limit_per_minute: 60
+tester:
+  max_tokens: 4500
+  rate_limit_per_minute: 60
+summarizer:
+  max_tokens: 3000
+  rate_limit_per_minute: 60

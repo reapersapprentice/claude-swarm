@@ -1,0 +1,21 @@
+default_agent: researcher
+conditional:
+  - keyword: "implement"
+    agent: coder
+  - keyword: "code"
+    agent: coder
+  - keyword: "test"
+    agent: tester
+  - keyword: "review"
+    agent: reviewer
+  - keyword: "research"
+    agent: researcher
+skip_if_contains:
+  test: "no tests required"
+capabilities:
+  planner: ["plan", "decompose", "route"]
+  researcher: ["research", "analyze", "investigate", "requirements"]
+  coder: ["code", "implement", "build", "refactor"]
+  reviewer: ["review", "audit", "validate", "security"]
+  tester: ["test", "coverage", "verify", "qa"]
+  summarizer: ["summarize", "merge", "compress", "final"]
