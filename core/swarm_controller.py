@@ -143,7 +143,7 @@ class SwarmController:
         agent = self.registry.get(node.agent)
         context_text = "\n\n".join(value for value in context.values() if value)
         if self.retrieval_pipeline and self.vector_store:
-            context_text = str(self.retrieval_pipeline.inject_into_prompt(node.task, context_text))
+            context_text = self.retrieval_pipeline.inject_context(node.task, context_text)
         optimized = self.optimizer.compress(context_text, task=node.task, agent_name=node.agent)
 
         cached = self.memory.get("results", f"{node.agent}:{node.task}:{optimized}")

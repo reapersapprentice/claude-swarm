@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 from .prompt_builder import PromptBuildResult, PromptBuilder
 from .vector_store import VectorStore
@@ -32,10 +32,15 @@ class RetrievalPipeline:
         context: str,
         template_key: Optional[str] = None,
         role_key: Optional[str] = None,
-    ) -> str | PromptBuildResult:
+    ) -> Union[str, PromptBuildResult]:
         """Inject retrieved context into context string or directly into built prompt."""
         retrieved = self.retrieve_context(task)
         merged = "\n\n".join(part for part in [context.strip(), retrieved.strip()] if part.strip())
         if self.builder is not None and template_key and role_key:
             return self.builder.build(template_key=template_key, role_key=role_key, task=task, context=merged)
         return merged
+
+    def inject_context(self, task: str, context: str) -> str:
+        """Inject retrieved context and always return a plain string."""
+        retrieved = self.retrieve_context(task)
+        return "\n\n".join(part for part in [context.strip(), retrieved.strip()] if part.strip())

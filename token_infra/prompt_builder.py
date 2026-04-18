@@ -30,6 +30,8 @@ class PromptBuilder:
         self.schema_path = Path(schema_path)
         self.encoding_name = encoding_name
         self.schema = self._load_schema(self.schema_path)
+        self._encoding: Any = None
+        self._encoding_failed = False
 
     def _load_schema(self, path: Path) -> Dict[str, Any]:
         if not path.exists():
@@ -40,12 +42,25 @@ class PromptBuilder:
         parsed.setdefault("role_blocks", {})
         return parsed
 
+    def _get_encoding(self) -> Any:
+        """Return cached tiktoken encoding or None if unavailable."""
+        if self._encoding is not None:
+            return self._encoding
+        if self._encoding_failed or tiktoken is None:
+            return None
+        try:
+            self._encoding = tiktoken.get_encoding(self.encoding_name)
+            return self._encoding
+        except Exception:
+            self._encoding_failed = True
+            return None
+
     def estimate_tokens(self, text: str) -> int:
         """Estimate token count with tiktoken when available."""
         if not text.strip():
             return 0
-        if tiktoken is not None:
-            encoding = tiktoken.get_encoding(self.encoding_name)
+        encoding = self._get_encoding()
+        if encoding is not None:
             return len(encoding.encode(text))
         return int(len(text.split()) * 1.3) + 1
 
