@@ -1,569 +1,734 @@
-<div align="center">
+# 🐝 claude-swarm
 
-# 🐝 CLAUDE-SWARM
+**A multi-agent orchestration framework that coordinates specialized AI agents to plan, research, code, review, test, and summarize software tasks — all from a single command.**
 
-<br>
-
-### **Your AI just got a team.**
-
-<br>
-
-<img src="https://img.shields.io/badge/agents-6%20specialized-blueviolet?style=for-the-badge" alt="6 Agents">
-<img src="https://img.shields.io/badge/token%20savings-40--70%25-success?style=for-the-badge" alt="Token Savings">
-<img src="https://img.shields.io/badge/tests-69%20passed-brightgreen?style=for-the-badge" alt="Tests">
-<img src="https://img.shields.io/badge/python-3.9+-blue?style=for-the-badge" alt="Python 3.9+">
-<img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License">
-
-<br><br>
-
-*One command. Six AI agents. A full engineering team that plans, researches, codes, reviews, tests, and delivers — while you grab coffee.*
-
-<br>
-
-**[Get Started in 30 Seconds](#-get-started-in-30-seconds)** · **[See It In Action](#-see-it-in-action)** · **[Why It's Different](#-why-claude-swarm-is-different)** · **[Build Anything](#-what-you-can-build)**
-
-</div>
-
-<br>
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests: 69 passed](https://img.shields.io/badge/tests-69%20passed-brightgreen.svg)](#testing)
 
 ---
 
-<br>
+## Table of Contents
 
-## 🔥 The Problem With AI Today
-
-You've been there. You paste a massive prompt into ChatGPT or Claude. You wait. You get back a **wall of text** that kinda-sorta-maybe works. Then you fix it. Then you prompt again. Then you fix it again.
-
-**That's not engineering. That's gambling.**
-
-What if instead of begging one AI to do everything, you had a **team of specialized AI agents** — each one an expert at their job — working together like a real engineering org?
-
-**That's claude-swarm.**
-
-<br>
+- [What Is claude-swarm?](#what-is-claude-swarm)
+- [How It Works — The Big Picture](#how-it-works--the-big-picture)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [The Six Agents — What Each One Does](#the-six-agents--what-each-one-does)
+- [Pipelines — Pre-Built Workflows](#pipelines--pre-built-workflows)
+- [How Tasks Flow Through the System](#how-tasks-flow-through-the-system)
+- [Token Optimization — Saving Money on API Calls](#token-optimization--saving-money-on-api-calls)
+- [Memory and Caching — How Results Are Reused](#memory-and-caching--how-results-are-reused)
+- [Using Any AI Model](#using-any-ai-model)
+- [Configuration](#configuration)
+- [Project Structure Explained](#project-structure-explained)
+- [Examples](#examples)
+- [Testing](#testing)
+- [Contributing](#contributing)
 
 ---
 
-<br>
+## What Is claude-swarm?
 
-## 💥 What Happens When You Run claude-swarm
+When you ask an AI model to do something complex — like "build me a REST API" — you typically get one big response that tries to do everything at once. It might miss edge cases, skip testing, or produce code that wasn't thought through.
 
-```bash
-python -m cli.swarm_cli run "build a web crawler with rate limiting"
+**claude-swarm takes a different approach.** Instead of relying on a single prompt, it breaks your task into stages and assigns each stage to a specialized agent. Think of it like a small software team:
+
+1. One agent **plans** how to approach the task
+2. Another **researches** relevant patterns and context
+3. A third **writes the code**
+4. Another **reviews** it for bugs
+5. One **writes tests**
+6. And a final agent **summarizes** everything into a clean deliverable
+
+Each agent has its own system prompt, its own token budget, and its own role. The framework coordinates them automatically — you just describe what you want built.
+
+**Who is this for?**
+- Developers who use LLM APIs (Claude, GPT, etc.) in their projects and want more structured, reliable output
+- Teams building AI-assisted development tools
+- Anyone experimenting with multi-agent workflows
+
+**What you need to know beforehand:**
+- Basic Python (3.9+)
+- A general understanding of what LLM APIs do (you send a prompt, you get text back)
+- That's it — no ML background required
+
+---
+
+## How It Works — The Big Picture
+
+Here's the high-level flow. Don't worry — each piece is explained in detail below.
+
+```
+You describe a task (e.g., "build a web crawler")
+        │
+        ▼
+┌──────────────┐
+│   Planner    │  Breaks the task into smaller steps with dependencies
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Task Router  │  Validates the plan and builds an execution graph (DAG)
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────────────────────────────────┐
+│  Agents execute in dependency order               │
+│                                                   │
+│  Step 1: Researcher gathers context               │
+│  Step 2: Coder writes implementation              │
+│  Step 3: Reviewer checks for issues               │
+│  Step 4: Tester generates test cases              │
+│  (Steps without dependencies can run in parallel) │
+└──────────────────────────────────────────────────┘
+       │
+       ▼
+┌──────────────┐
+│  Summarizer  │  Merges all outputs into one clean result
+└──────┬───────┘
+       │
+       ▼
+   Final result with merged output, token metrics, and graph visualization
 ```
 
-Behind the scenes, **six agents go to work:**
+**Key concept — the DAG (Directed Acyclic Graph):**
 
-<br>
-
-<table>
-<tr>
-<td width="60" align="center">🧠</td>
-<td><b>THE PLANNER</b> breaks your task into an execution graph — atomic steps with explicit dependencies. No ambiguity. No hallucinated architecture.</td>
-</tr>
-<tr>
-<td align="center">🔍</td>
-<td><b>THE RESEARCHER</b> investigates patterns, studies your codebase, gathers the context that matters — <i>before</i> a single line of code is written.</td>
-</tr>
-<tr>
-<td align="center">💻</td>
-<td><b>THE CODER</b> writes structured, production-ready code with file paths, implementations, and explanations. Not snippets. Real code.</td>
-</tr>
-<tr>
-<td align="center">🔎</td>
-<td><b>THE REVIEWER</b> audits everything for bugs, security holes, and bad patterns. Your code gets reviewed before you even see it.</td>
-</tr>
-<tr>
-<td align="center">🧪</td>
-<td><b>THE TESTER</b> generates test cases and validates that what was built actually works. No more "it compiles, ship it."</td>
-</tr>
-<tr>
-<td align="center">📋</td>
-<td><b>THE SUMMARIZER</b> compresses everything into a clean deliverable you can use immediately. No digging through logs.</td>
-</tr>
-</table>
-
-<br>
-
-**The output?** A fully planned, researched, implemented, reviewed, tested, and documented solution — from one command.
-
-<br>
+The planner's output is turned into a graph of steps. Each step says "I need these other steps to finish first." This is called a DAG — a standard computer science structure that prevents circular dependencies and determines what can run in parallel. If step A and step B don't depend on each other, they can run at the same time.
 
 ---
 
-<br>
+## Installation
 
-## ⚡ Get Started in 30 Seconds
+### Requirements
+
+- Python 3.9 or higher
+- `pip` (Python's package manager)
+
+### Steps
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/reapersapprentice/claude-swarm.git
+
+# 2. Enter the project directory
 cd claude-swarm
+
+# 3. Install in development mode
 pip install -e .
 ```
 
-That's it. **One dependency** (PyYAML). No bloated ML frameworks. No API client libraries. No Docker. No Kubernetes. No PhD required.
+This installs two core dependencies:
+- **PyYAML** — for reading configuration files
+- **tiktoken** — for accurate token counting (falls back to a word-based estimate if unavailable)
 
-<br>
+### Optional: Semantic Search with ChromaDB
 
-### 🎬 Your First Swarm
+If you want richer memory capabilities (explained in the [Memory](#memory-and-caching--how-results-are-reused) section), install the optional vector search backend:
 
 ```bash
-# Full pipeline — plan → research → code → review → test → summarize
-python -m cli.swarm_cli run "build a REST API with authentication"
-
-# Just coding — skip research, go straight to building
-python -m cli.swarm_cli run --pipeline code "implement a binary search tree"
-
-# Preview the execution graph without running anything
-python -m cli.swarm_cli run --dry-run "refactor the database layer"
-
-# See what agents are available
-python -m cli.swarm_cli list-agents
-
-# Visualize the DAG for any task
-python -m cli.swarm_cli show-graph "build a microservice architecture"
+pip install -e ".[vectors]"
 ```
 
-### 🐍 Or Use It From Python
+This adds **ChromaDB**, an open-source vector database. It's entirely optional — the framework includes a built-in vector search that works without it.
+
+---
+
+## Quick Start
+
+### From the Command Line
+
+The CLI is located in `cli/swarm_cli.py`. Here are the main commands:
+
+```bash
+# Run a task through the full pipeline (plan → research → code → review → test → summarize)
+python -m cli.swarm_cli run "build a REST API with authentication"
+
+# Run with a specific pipeline (explained below)
+python -m cli.swarm_cli run --pipeline code "implement a binary search tree"
+python -m cli.swarm_cli run --pipeline research "compare SQL vs NoSQL for session storage"
+
+# Preview the execution graph without actually running anything (useful for debugging)
+python -m cli.swarm_cli run --dry-run "refactor the database layer"
+
+# List all registered agents and their names
+python -m cli.swarm_cli list-agents
+
+# Show the execution graph for a task as ASCII art
+python -m cli.swarm_cli show-graph "build a microservice"
+
+# Clear the result cache (start fresh)
+python -m cli.swarm_cli clear-cache
+```
+
+The output is JSON, which includes:
+- `success` — whether the pipeline completed without errors
+- `merged_output` — the combined output from all agents
+- `metrics` — token usage, duration, cache hits, and number of nodes executed
+
+### From Python Code
 
 ```python
 from pipelines import build_repo_build_pipeline
 
+# Create a controller. Pass your own model, or omit for the built-in EchoModel (for testing).
 controller = build_repo_build_pipeline(my_model)
-result = controller.execute("build a real-time notification system")
 
-print(result.success)              # True
-print(result.merged_output)        # The complete, merged deliverable
-print(result.metrics)              # {"tokens_used": 12400, "duration_seconds": 3.2, ...}
-print(result.graph_visualization)  # ASCII DAG showing execution flow
+# Run the full pipeline
+result = controller.execute("build a web crawler with rate limiting")
+
+# Inspect the results
+print(result.success)              # True or False
+print(result.merged_output)        # All agent outputs merged together
+print(result.metrics)              # {"tokens_used": ..., "duration_seconds": ..., ...}
+print(result.graph_visualization)  # ASCII diagram of the execution graph
+print(result.node_results)         # Individual results from each agent
 ```
 
-<br>
+> **Note:** The built-in `EchoModel` returns deterministic placeholder outputs. It's useful for testing the framework itself without making API calls. To do real work, pass in your own model backend (see [Using Any AI Model](#using-any-ai-model)).
 
 ---
 
-<br>
+## The Six Agents — What Each One Does
 
-## 🏆 Why claude-swarm Is Different
+Each agent is a Python class that inherits from `BaseAgent`. They all follow the same pattern:
 
-<br>
+1. Receive a task description and context from previous agents
+2. Build a prompt using a system prompt loaded from `prompts/*.md`
+3. Call the language model
+4. Parse the model's response into structured JSON
+5. Return an `AgentResult` with the parsed data and token usage
 
-### 🎯 Structured Execution, Not Prompt Roulette
+Here's what each agent is responsible for:
 
-Every task is decomposed into a **directed acyclic graph (DAG)**. Dependencies are explicit. Execution order is deterministic. There's no guesswork, no hallucinated steps, no circular reasoning.
+### 🧠 Planner (`agents/planner_agent.py`)
 
-```
-Your Task → Planner → DAG → Parallel Execution → Merged Result
-```
+**Job:** Break a high-level task into smaller, ordered steps.
 
-**You get the same result every time.** That's not a feature. That's a requirement for production.
+**How it works:** The planner asks the language model to decompose the task into a JSON array of nodes. Each node has:
+- An `id` (e.g., `"research"`, `"code"`)
+- An `agent` assignment (which agent should handle it)
+- A `task` description
+- A list of `dependencies` (which other nodes must complete first)
 
-<br>
-
-### 💰 Slash Your API Bill by 40–70%
-
-The built-in **TokenOptimizer** runs five compression strategies on every piece of context:
-
-| Strategy | What It Does | Impact |
-|----------|-------------|--------|
-| **Deduplication** | Kills near-identical content with sequence matching | 🔥 No repeated context |
-| **Relevance Pruning** | Scores blocks against the task, drops low-value text | 🔥 Only relevant info reaches agents |
-| **Incremental Diffs** | Sends only what changed, not full history | 🔥 Massive savings on multi-step tasks |
-| **Budget Enforcement** | Hard per-agent and global token caps | 🔥 No surprise $500 API bills |
-| **Local Estimation** | `words × 1.3` — no external tokenizer calls | 🔥 Zero latency overhead |
-
-> **Translation:** If you're spending $100/month on API tokens doing things the old way, you'll spend **$30–60** with claude-swarm. Same output. Less waste.
-
-<br>
-
-### ⚡ 3–10× Faster Than Sequential Prompting
-
-Independent branches of the execution graph run in **parallel batches**. When research and code generation don't depend on each other, they execute simultaneously.
-
-```
-Sequential:  [Plan] → [Research] → [Code] → [Review] → [Test] → [Summary]
-                                    ↓
-claude-swarm: [Plan] → [Research | Code | Review] → [Test] → [Summary]
-                            ↑ parallel batch ↑
+**Example output:**
+```json
+[
+  {"id": "research", "agent": "researcher", "task": "Research rate limiting patterns", "dependencies": []},
+  {"id": "code", "agent": "coder", "task": "Implement the crawler", "dependencies": ["research"]},
+  {"id": "review", "agent": "reviewer", "task": "Review the implementation", "dependencies": ["code"]},
+  {"id": "test", "agent": "tester", "task": "Write tests", "dependencies": ["review"]},
+  {"id": "summary", "agent": "summarizer", "task": "Summarize everything", "dependencies": ["test"]}
+]
 ```
 
-**Your 30-second pipeline becomes a 5-second pipeline.**
+**Safety net:** If the model returns invalid JSON, the planner generates a sensible default plan (research → code → review → test → summarize).
 
-<br>
+### 🔍 Researcher (`agents/researcher_agent.py`)
 
-### 🔄 Self-Healing Pipelines
+**Job:** Gather context, analyze patterns, and understand the problem before code is written.
 
-Failed nodes **retry automatically** (configurable up to N retries). Optional nodes **skip gracefully** instead of crashing the whole pipeline. Your workflow doesn't die because one API call timed out.
+**Output format:** `{"findings": [...], "sources": [...], "summary": "..."}`
 
-<br>
+This agent is about understanding the "what" and "why" before jumping to "how."
 
-### 🧠 Memory That Actually Remembers
+### 💻 Coder (`agents/coder_agent.py`)
 
-| Feature | How It Works |
-|---------|-------------|
-| **Vector Search** | Finds relevant past results using cosine similarity — zero external APIs |
-| **LRU Cache** | Disk-persisted caching avoids redundant computation across runs |
-| **Knowledge Store** | Namespaced key-value storage with TTL expiration keeps projects isolated |
-| **ChromaDB Support** | Optional upgrade to full semantic search when you need it |
+**Job:** Write actual code with file paths and explanations.
 
-Run the same task twice? **Instant results from cache.** Run a similar task? **Relevant context is automatically injected.**
+**Output format:** `{"files": [{"path": "...", "content": "..."}], "explanation": "..."}`
 
-<br>
+The coder produces structured output — not just a code block, but file paths and descriptions so you know where everything goes.
 
-### 🔌 Works With ANY Model
+### 🔎 Reviewer (`agents/reviewer_agent.py`)
 
-Claude, GPT-4, GPT-3.5, Llama, Mistral, Ollama, your fine-tuned model — **claude-swarm doesn't care.** Implement one method:
+**Job:** Audit the code for bugs, security issues, and quality problems.
+
+**Output format:** `{"issues": [...], "approved": true/false, "suggestions": [...]}`
+
+### 🧪 Tester (`agents/tester_agent.py`)
+
+**Job:** Generate test cases that validate the implementation.
+
+**Output format:** `{"tests": [{"name": "...", "code": "..."}], "coverage_notes": "..."}`
+
+### 📋 Summarizer (`agents/summarizer_agent.py`)
+
+**Job:** Compress all previous outputs into a single, clean deliverable.
+
+**Output format:** `{"summary": "...", "highlights": [...]}`
+
+### How Agents Handle Errors
+
+Every agent has a `_parse` method that tries to parse the model's raw output as JSON. If parsing fails (bad JSON, missing fields, etc.), it falls back to a safe default structure. This means the pipeline never crashes from a malformed model response — it gracefully degrades.
+
+---
+
+## Pipelines — Pre-Built Workflows
+
+A pipeline is a pre-configured combination of agents. You pick a pipeline, and the framework wires up the right agents in the right order.
+
+### `repo_build` — Full Engineering Workflow (default)
+
+```
+Planner → Researcher → Coder → Reviewer → Tester → Summarizer
+```
+
+Use this when you want the complete treatment: plan the approach, research first, write code, review it, test it, and summarize.
+
+```bash
+python -m cli.swarm_cli run "build a user authentication system"
+```
+
+### `research` — Analysis Only
+
+```
+Planner → Researcher → Summarizer
+```
+
+Use this when you need research and analysis, not code. Good for technical investigations, comparisons, or feasibility studies.
+
+```bash
+python -m cli.swarm_cli run --pipeline research "compare WebSocket vs SSE for real-time updates"
+```
+
+### `code` — Build Without Research
+
+```
+Planner → Coder → Reviewer → Tester
+```
+
+Use this when you already know what you want and just need it implemented and verified.
+
+```bash
+python -m cli.swarm_cli run --pipeline code "implement a priority queue with decrease-key"
+```
+
+### Building Custom Pipelines
+
+You can create your own pipeline by wiring up the `SwarmController` directly. The `pipelines/common.py` module has helper functions (`build_controller`, `build_registry`) that construct the controller with all necessary components. You define which agents to register and what dependencies exist between nodes.
+
+---
+
+## How Tasks Flow Through the System
+
+Let's trace exactly what happens when you run a task. This section explains the internals.
+
+### Step 1: The Planner Creates a Plan
+
+The `SwarmController.execute()` method starts by calling the planner agent. The planner sends your task to the language model, which returns a JSON list of steps (nodes). Each node specifies what agent should handle it and which other nodes it depends on.
+
+### Step 2: The Task Router Builds an Execution Graph
+
+The `TaskRouter` takes the planner's output and constructs an `ExecutionGraph` — a DAG (directed acyclic graph). During this process, it:
+
+- **Validates the plan** — every node must have an `id` and a `task`
+- **Assigns agents** — if a node doesn't specify an agent, the router infers one from keyword-based routing rules (configured in `configs/routing_rules.yaml`). For example, a task containing the word "implement" is routed to the coder agent.
+- **Checks for cycles** — if step A depends on step B and step B depends on step A, that's a cycle. The graph rejects it.
+- **Validates capability compatibility** — each agent declares capabilities (like "code", "review", "test"). The router checks that the task matches the agent's capabilities.
+
+### Step 3: Agents Execute in Parallel Groups
+
+The graph is divided into "parallel groups" — batches of nodes that can run at the same time because they have no dependencies on each other.
+
+For each node in each group:
+
+1. **Context assembly** — outputs from dependency nodes are gathered
+2. **Retrieval pipeline** (optional) — if configured, relevant past results are fetched from the vector store and injected into the context
+3. **Token optimization** — the `TokenOptimizer` deduplicates, prunes, and compresses the context
+4. **Cache check** — if this exact task/context combination was seen before, the cached result is returned instantly
+5. **Agent execution** — the agent builds a prompt (system prompt + user prompt) and calls the language model
+6. **Output compression** (optional) — the `CompressionPipeline` can further reduce the output before passing it downstream
+7. **Budget enforcement** — token usage is checked against per-agent and global limits
+8. **Result storage** — the output is stored in the cache and (optionally) indexed in the vector store
+
+### Step 4: Retry and Skip Logic
+
+- **Retries:** If a node fails (exception, timeout, etc.), it's retried automatically. The number of retries is configurable (default: 2).
+- **Optional nodes:** Nodes can be marked as `optional`. If an optional node fails after retries, it's skipped and the pipeline continues. Required nodes that fail halt the pipeline.
+
+### Step 5: Results Are Merged
+
+The `SwarmController.merge_results()` method combines outputs from all successful nodes into a single string, sorted by node ID. The final `SwarmResult` includes:
+
+- `success` — `True` if all required nodes completed
+- `merged_output` — the combined text from all agents
+- `node_results` — individual results per node (output, tokens used, whether it was cached, errors)
+- `metrics` — total tokens used, execution duration, cache hits, nodes executed
+- `graph_visualization` — an ASCII representation of the execution graph
+
+### Hooks
+
+You can attach callbacks that run before or after each node executes:
+
+```python
+controller.add_pre_task_hook(lambda node, context: print(f"Starting: {node.id}"))
+controller.add_post_task_hook(lambda node, result: print(f"Finished: {node.id}, success={result.success}"))
+```
+
+This is useful for logging, monitoring, or custom integrations.
+
+---
+
+## Token Optimization — Saving Money on API Calls
+
+LLM API calls are priced by tokens (roughly, words). If you send the same context to every agent, you waste tokens — and money. The `TokenOptimizer` (`core/token_optimizer.py`) applies several strategies to reduce token usage:
+
+### 1. Deduplication
+
+When context is assembled from multiple sources, near-identical paragraphs are detected using sequence matching and removed. This prevents the same information from being sent twice.
+
+### 2. Relevance Pruning
+
+Each paragraph in the context is scored against the current task using keyword overlap. Low-relevance paragraphs are dropped. The remaining paragraphs are kept in order of relevance until the token budget is filled.
+
+### 3. Incremental Context
+
+The optimizer tracks what context each agent has already seen. On subsequent calls, it sends only the new content (the "diff"), not the full history. This is especially effective in multi-step pipelines where context grows over time.
+
+### 4. Budget Enforcement
+
+Each agent has a token limit (configurable in `configs/agent_limits.yaml`). There's also a global limit across all agents (default: 50,000 tokens). If a call would exceed either limit, a `ValueError` is raised before the API call is made — so you never accidentally run up a large bill.
+
+### 5. Token Estimation
+
+Tokens are estimated using the `tiktoken` library when available (accurate, model-specific counting). If `tiktoken` isn't available, it falls back to a `words × 1.3` approximation — fast and dependency-free.
+
+### Token Infrastructure Layer
+
+For more advanced prompt management, the `token_infra/` package provides additional tools:
+
+- **PromptBuilder** (`token_infra/prompt_builder.py`) — Assembles prompts from YAML-defined templates, roles, and rulesets (defined in `configs/prompt_schema.yaml`). This ensures prompts are deterministic and consistent across runs.
+- **TokenBudget** (`token_infra/token_budget.py`) — Per-agent budget validation with named profiles (e.g., "strict" at 800 tokens, "extended" at 8000 tokens). Profiles are defined in `configs/budgets.yaml`.
+- **CompressionPipeline** (`token_infra/compression.py`) — Deduplicates and prunes inter-agent outputs before they're passed downstream.
+- **RetrievalPipeline** (`token_infra/retrieval_pipeline.py`) — Queries the vector store for semantically similar past results and injects them into the current prompt.
+- **VectorStore** (`token_infra/vector_store.py`) — Dual-backend semantic search. Uses ChromaDB when installed, otherwise falls back to the built-in bag-of-words cosine similarity index.
+
+To enable the full token infrastructure, pass a `token_config` when building a pipeline:
+
+```python
+controller = build_repo_build_pipeline(
+    my_model,
+    token_config={
+        "prompt_schema_path": "configs/prompt_schema.yaml",
+        "budgets_path": "configs/budgets.yaml",
+        "prefer_chromadb": False,   # Use built-in vector search
+        "retrieval_top_k": 3,       # Inject top 3 similar past results
+    }
+)
+```
+
+---
+
+## Memory and Caching — How Results Are Reused
+
+claude-swarm includes three layers of memory, all working without external services:
+
+### StateStore (`core/state_store.py`)
+
+A JSON-backed key-value store with **namespaces** and **TTL (time-to-live) expiration**.
+
+- The swarm controller uses it to cache agent results. If you run the same task with the same context twice, the second run returns instantly from cache.
+- Data is organized by namespace (e.g., `"results"`) so different types of data don't collide.
+- Entries can expire automatically after a configurable number of seconds.
+- State is persisted to `.swarm_state.json` on disk, so it survives restarts.
+
+### ContextCache (`memory/context_cache.py`)
+
+An **LRU (Least Recently Used) cache** for agent outputs.
+
+- Keyed by a SHA-256 hash of the agent name, task, and context — so identical inputs always produce a cache hit.
+- Has a configurable max size (default: 128 entries). When full, the least recently used entry is evicted.
+- Persisted to disk as JSON.
+
+### VectorIndex (`memory/vector_index.py`)
+
+A **built-in similarity search** engine with zero external dependencies.
+
+- Converts text into sparse bag-of-words vectors
+- Uses cosine similarity to find the most relevant past results for a new query
+- No API calls, no database — everything runs in-memory with plain Python
+
+This is what powers the retrieval pipeline when ChromaDB isn't installed.
+
+### KnowledgeStore (`memory/knowledge_store.py`)
+
+A **namespaced key-value store** for long-term knowledge across sessions.
+
+- Supports wildcard search (e.g., find all keys matching `"auth_*"`)
+- Persisted to `knowledge_store/store.json`
+- Useful for storing project-specific context that agents can reference later
+
+---
+
+## Using Any AI Model
+
+claude-swarm doesn't lock you into any specific AI provider. It works with any model backend through the `ModelInterface` protocol — a single method you need to implement:
 
 ```python
 from agents.base_agent import ModelInterface
 
-class MyBackend(ModelInterface):
-    def generate(self, system_prompt: str, user_prompt: str,
-                 max_tokens: int, temperature: float = 0.0) -> str:
-        return my_api.complete(system_prompt, user_prompt, max_tokens)
+class MyModel(ModelInterface):
+    def generate(
+        self,
+        system_prompt: str,    # Instructions for the model's role
+        user_prompt: str,      # The actual task + context
+        max_tokens: int,       # Maximum response length
+        temperature: float = 0.0  # Randomness (0.0 = deterministic)
+    ) -> str:
+        # Call your model here and return the response as a string
+        return my_api.call(system_prompt, user_prompt, max_tokens)
 ```
 
-**That's the entire integration.** One method. Everything else — planning, routing, execution, caching, optimization, retries — is handled by the framework.
+**That's the only method.** The framework handles everything else — prompt construction, routing, caching, compression, retries, and result merging.
 
-<br>
+### Example: Using Claude via the Anthropic API
+
+```python
+import anthropic
+
+class ClaudeBackend(ModelInterface):
+    def __init__(self):
+        self.client = anthropic.Anthropic()
+
+    def generate(self, system_prompt, user_prompt, max_tokens, temperature=0.0):
+        message = self.client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        return message.content[0].text
+```
+
+### Example: Using OpenAI's API
+
+```python
+import openai
+
+class GPTBackend(ModelInterface):
+    def __init__(self):
+        self.client = openai.OpenAI()
+
+    def generate(self, system_prompt, user_prompt, max_tokens, temperature=0.0):
+        response = self.client.chat.completions.create(
+            model="gpt-4",
+            max_tokens=max_tokens,
+            temperature=temperature,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        return response.choices[0].message.content
+```
+
+### Built-in EchoModel (For Testing)
+
+The framework includes an `EchoModel` in `pipelines/common.py` that returns deterministic placeholder responses without making any API calls. It's used in tests and is the default when you don't pass a model. This lets you explore the framework's structure and behavior without needing an API key.
 
 ---
 
-<br>
+## Configuration
 
-## 🛠️ What You Can Build
+All configuration is stored as YAML files in the `configs/` directory. Here's what each file controls:
 
-<br>
+### `configs/swarm_config.yaml` — Global Settings
 
-<table>
-<tr>
-<th width="250">🏗️ Use Case</th>
-<th width="150">Pipeline</th>
-<th>What Happens</th>
-</tr>
-<tr>
-<td><b>Build an entire feature</b></td>
-<td><code>repo_build</code></td>
-<td>Plans architecture → researches patterns → writes code → reviews for bugs → generates tests → summarizes changes</td>
-</tr>
-<tr>
-<td><b>Deep-dive research</b></td>
-<td><code>research</code></td>
-<td>Plans research questions → investigates each angle → synthesizes a clear report with sources</td>
-</tr>
-<tr>
-<td><b>Refactor existing code</b></td>
-<td><code>code</code></td>
-<td>Plans the refactor → implements changes → reviews for regressions → validates with tests</td>
-</tr>
-<tr>
-<td><b>Code review automation</b></td>
-<td>Custom DAG</td>
-<td>Route code through reviewer + tester agents with your own dependency graph</td>
-</tr>
-<tr>
-<td><b>Documentation generation</b></td>
-<td>Custom DAG</td>
-<td>Research the codebase → summarize each module → merge into polished docs</td>
-</tr>
-<tr>
-<td><b>Security auditing</b></td>
-<td>Custom DAG</td>
-<td>Analyze code → review for vulnerabilities → generate a findings report</td>
-</tr>
-<tr>
-<td><b>Competitive analysis</b></td>
-<td><code>research</code></td>
-<td>Decompose the research question → investigate each competitor → synthesize insights</td>
-</tr>
-<tr>
-<td><b>Test suite generation</b></td>
-<td>Custom DAG</td>
-<td>Analyze existing code → generate comprehensive test cases → review for coverage gaps</td>
-</tr>
-</table>
+```yaml
+swarm:
+  max_total_tokens: 50000     # Global token budget across all agents
+  max_execution_time: 300     # Timeout in seconds
+  retry_failed_nodes: true    # Automatically retry failed steps
+  max_retries: 2              # How many times to retry
+  cache_results: true         # Cache results for reuse
 
-<br>
+model:
+  provider: "claude"
+  default_model: "claude-sonnet-4-20250514"
+  temperature: 0.0            # 0.0 = deterministic output
+
+output:
+  format: "structured"
+  include_metrics: true
+  save_artifacts: true
+  artifacts_dir: ".swarm_output"
+```
+
+### `configs/agent_limits.yaml` — Per-Agent Token Budgets
+
+Each agent gets its own token limit and budget profile:
+
+```yaml
+planner:
+  max_tokens: 3000
+  budget_profile: standard    # Uses 2000 prompt / 1500 response limits
+
+coder:
+  max_tokens: 7000
+  budget_profile: extended    # Uses 8000 prompt / 4096 response limits
+
+reviewer:
+  max_tokens: 4000
+  budget_profile: strict      # Uses 800 prompt / 600 response limits
+```
+
+### `configs/budgets.yaml` — Budget Profile Definitions
+
+Profiles define prompt and response limits for each agent category:
+
+```yaml
+strict:
+  prompt_limit: 800
+  response_limit: 600
+  soft_ratio: 0.80
+
+standard:
+  prompt_limit: 2000
+  response_limit: 1500
+  soft_ratio: 0.85
+
+extended:
+  prompt_limit: 8000
+  response_limit: 4096
+  soft_ratio: 0.90
+```
+
+### `configs/routing_rules.yaml` — Agent Assignment Rules
+
+When the planner doesn't specify which agent should handle a step, the task router uses keyword matching:
+
+```yaml
+default_agent: researcher     # Fallback when no keyword matches
+
+conditional:
+  - keyword: "implement"
+    agent: coder
+  - keyword: "test"
+    agent: tester
+  - keyword: "review"
+    agent: reviewer
+
+skip_if_contains:
+  test: "no tests required"   # Skip the test node if findings contain this phrase
+```
+
+### `configs/prompt_schema.yaml` — Prompt Templates
+
+Defines reusable templates, role descriptions, and rulesets that the `PromptBuilder` assembles into prompts:
+
+```yaml
+templates:
+  TMP:PLAN: |
+    Task: {task}
+    Context: {context}
+    Decompose into atomic execution nodes.
+
+role_blocks:
+  ROLE_PLANNER: "You are a planning specialist producing deterministic execution DAGs."
+  ROLE_CODER: "You are a coding specialist producing production-grade implementation artifacts."
+
+rulesets:
+  T1: "Use concise, deterministic phrasing."
+  T5: "Prioritize correctness over verbosity."
+```
 
 ---
 
-<br>
-
-## 🏗️ Architecture — How the Magic Works
-
-```
-                         ┌─────────────────┐
-                         │   YOUR TASK     │
-                         │  "Build X..."   │
-                         └────────┬────────┘
-                                  │
-                         ┌────────▼────────┐
-                         │    PLANNER      │  Decomposes into execution nodes
-                         │  "Break this    │  with explicit dependencies
-                         │   into steps"   │
-                         └────────┬────────┘
-                                  │
-                         ┌────────▼────────┐
-                         │  TASK ROUTER    │  Validates plan → builds DAG
-                         │  Cycle detect   │  Assigns agents by capability
-                         │  + topo sort    │
-                         └────────┬────────┘
-                                  │
-            ┌─────────────────────┼─────────────────────┐
-            │                     │                     │
-   ┌────────▼────────┐  ┌────────▼────────┐  ┌─────────▼───────┐
-   │   RESEARCHER    │  │     CODER       │  │    REVIEWER      │
-   │  Gathers deep   │  │  Writes real    │  │  Catches bugs    │
-   │  context first  │  │  production     │  │  before you      │  ← Parallel
-   │                 │  │  code           │  │  ship them       │     Batch
-   └────────┬────────┘  └────────┬────────┘  └─────────┬───────┘
-            │                     │                     │
-            └─────────────────────┼─────────────────────┘
-                                  │
-                         ┌────────▼────────┐
-                         │    TESTER       │  Generates tests
-                         │  Validates      │  Confirms it works
-                         └────────┬────────┘
-                                  │
-                         ┌────────▼────────┐
-                         │   SUMMARIZER    │  Merges everything
-                         │  Clean output   │  into one deliverable
-                         └────────┬────────┘
-                                  │
-                    ┌─────────────▼─────────────┐
-                    │        RESULT             │
-                    │  ✓ Merged output          │
-                    │  ✓ Token metrics          │
-                    │  ✓ Graph visualization    │
-                    │  ✓ Per-node results       │
-                    └───────────────────────────┘
-```
-
-<br>
-
-### 🔧 Token Infrastructure Layer
-
-Under the hood, a **full token optimization stack** works alongside the agent pipeline:
-
-- **PromptBuilder** — Assembles deterministic prompts from YAML-defined templates, roles, and rulesets
-- **TokenBudget** — Validates prompt size against configurable per-agent limits with soft/hard thresholds
-- **CompressionPipeline** — Deduplicates and relevance-prunes inter-agent context to minimize waste
-- **RetrievalPipeline** — Fetches semantically relevant past results and injects them into prompts
-- **VectorStore** — Dual-backend semantic search (built-in cosine similarity or ChromaDB)
-
-<br>
-
----
-
-<br>
-
-## 🧩 Pre-Built Pipelines
-
-<br>
-
-### 🏗️ `repo_build` — The Full Engineering Team
-```
-Planner → Researcher → Coder → Reviewer → Tester → Summarizer
-```
-Takes a feature request and delivers **planned, researched, implemented, reviewed, tested, and documented code.** The gold standard.
-
-<br>
-
-### 🔬 `research` — Deep Analysis Mode
-```
-Planner → Researcher → Summarizer
-```
-When you need **understanding**, not code. Decomposes a question, investigates each angle, and synthesizes a clear report.
-
-<br>
-
-### 🚀 `code` — Ship It Fast
-```
-Planner → Coder → Reviewer → Tester
-```
-Skip the research. **Plan → Build → Review → Test.** For when you know what you want and just need it built.
-
-<br>
-
-### 🔧 Custom — Build Your Own Pipeline
-Compose any combination of agents into your own DAG. Define nodes, set dependencies, and let the controller handle execution, caching, retries, and optimization.
-
-<br>
-
----
-
-<br>
-
-## ⚙️ Configuration
-
-All configuration lives in `configs/` as clean, readable YAML:
-
-| File | What It Controls |
-|------|-----------------|
-| `swarm_config.yaml` | Global execution settings — retries, output format, model defaults |
-| `agent_limits.yaml` | Per-agent token budgets and rate limits |
-| `routing_rules.yaml` | Keyword-based routing, conditional skip rules, capability hints |
-| `budgets.yaml` | Named budget profiles (compact, standard, extended) |
-| `prompt_schema.yaml` | Template/ruleset/role definitions for deterministic prompt assembly |
-
-<br>
-
----
-
-<br>
-
-## 🧪 Battle-Tested
-
-```bash
-$ pytest -v
-```
-
-```
-tests/test_agent_parse_safety.py        ✓✓✓✓✓✓✓     Agent error handling
-tests/test_agent_registry.py            ✓✓           Agent lifecycle
-tests/test_cli.py                        ✓✓           Command-line interface
-tests/test_context_cache.py              ✓             LRU cache + disk persistence
-tests/test_controller_error_paths.py     ✓✓✓✓✓       Hooks, retries, caching
-tests/test_diff_manager.py              ✓✓✓✓✓✓✓     Diff generation + application
-tests/test_execution_graph.py           ✓✓           DAG cycle detection + sort
-tests/test_pipelines.py                  ✓             Pipeline integration
-tests/test_prompt_builder_extended.py    ✓✓✓✓✓✓✓✓✓✓✓ Template assembly
-tests/test_state_store_extended.py       ✓✓✓✓✓✓✓✓✓✓✓✓ TTL, persistence, namespaces
-tests/test_swarm_controller.py          ✓✓✓          Execution orchestration
-tests/test_task_router.py               ✓✓           Graph routing
-tests/test_token_infra.py               ✓✓✓✓✓       Token optimization stack
-tests/test_token_optimizer.py           ✓✓           Budget enforcement
-tests/test_vector_store_extended.py     ✓✓✓✓✓✓✓     Vector search + metadata
-──────────────────────────────────────────────────────────────────
-69 passed in <5s
-```
-
-**69 tests. Zero failures. <5 second execution.** Every agent, every pipeline, every edge case — covered.
-
-<br>
-
----
-
-<br>
-
-## 📂 Project Structure
+## Project Structure Explained
 
 ```
 claude-swarm/
 │
-├── core/                    🎯 Orchestration Engine
-│   ├── swarm_controller     Central execution loop — hooks, retries, metrics, caching
-│   ├── execution_graph      DAG primitives — cycle detection, topo sort, parallel groups
-│   ├── task_router          JSON plan → validated, dependency-resolved execution graph
-│   ├── token_optimizer      Five-strategy context compaction engine
-│   ├── agent_registry       Lazy-init agent management with capability queries
-│   └── state_store          Persistent JSON state with TTL and namespace isolation
+├── core/                       The orchestration engine
+│   ├── swarm_controller.py     Runs the full pipeline: plan → execute → merge
+│   ├── execution_graph.py      DAG data structure with cycle detection and parallel grouping
+│   ├── task_router.py          Converts planner output into a validated execution graph
+│   ├── token_optimizer.py      Deduplication, pruning, incremental diffs, budget enforcement
+│   ├── agent_registry.py       Registers and lazily initializes agents by name
+│   └── state_store.py          JSON-backed persistent state with namespaces and TTL
 │
-├── agents/                  🤖 Specialized Agent Team
-│   ├── base_agent           Abstract base — caching, prompt loading, token tracking
-│   ├── planner              Task decomposition into execution nodes
-│   ├── researcher           Deep context gathering and analysis
-│   ├── coder                Structured code generation with file output
-│   ├── reviewer             Code audit, bug detection, security review
-│   ├── tester               Test generation and validation
-│   └── summarizer           Output compression and final deliverable merge
+├── agents/                     The six specialized agents
+│   ├── base_agent.py           Abstract base class with caching, prompt loading, and model calls
+│   ├── planner_agent.py        Breaks tasks into execution node graphs
+│   ├── researcher_agent.py     Gathers context and findings
+│   ├── coder_agent.py          Produces structured code with file paths
+│   ├── reviewer_agent.py       Audits code for bugs and security issues
+│   ├── tester_agent.py         Generates test cases
+│   └── summarizer_agent.py     Compresses outputs into a final deliverable
 │
-├── token_infra/             💎 Token Optimization Stack
-│   ├── prompt_builder       Deterministic prompt assembly from YAML schemas
-│   ├── token_budget         Per-agent budget validation with soft/hard limits
-│   ├── compression          Semantic deduplication and relevance pruning
-│   ├── retrieval_pipeline   Vector-powered context injection
-│   └── vector_store         Dual-backend semantic search (built-in + ChromaDB)
+├── token_infra/                Advanced token management
+│   ├── prompt_builder.py       Builds prompts from YAML-defined schemas
+│   ├── token_budget.py         Per-agent token budget validation
+│   ├── compression.py          Deduplication and relevance pruning for inter-agent context
+│   ├── retrieval_pipeline.py   Injects relevant past results into prompts via vector search
+│   └── vector_store.py         Semantic search with ChromaDB or built-in fallback
 │
-├── memory/                  🧠 Intelligent Memory Layer
-│   ├── vector_index         Bag-of-words cosine similarity (zero dependencies)
-│   ├── context_cache        LRU cache with disk persistence
-│   └── knowledge_store      Namespaced persistent key-value storage
+├── memory/                     Result caching and retrieval
+│   ├── vector_index.py         In-memory bag-of-words similarity search (no dependencies)
+│   ├── context_cache.py        LRU cache with disk persistence
+│   └── knowledge_store.py      Namespaced key-value store for cross-session knowledge
 │
-├── pipelines/               🔗 Pre-Built Workflows
-│   ├── repo_build           Full six-agent engineering pipeline
-│   ├── research             Three-agent deep analysis pipeline
-│   ├── code                 Four-agent focused implementation pipeline
-│   └── common               Shared pipeline builder utilities
+├── pipelines/                  Pre-configured agent workflows
+│   ├── repo_build_pipeline.py  Full 6-agent pipeline (plan → research → code → review → test → summarize)
+│   ├── research_pipeline.py    3-agent pipeline (plan → research → summarize)
+│   ├── code_pipeline.py        4-agent pipeline (plan → code → review → test)
+│   └── common.py               Shared setup: model defaults, registry builder, controller factory
 │
-├── utils/                   🔧 Shared Tooling
-│   ├── diff_manager         Unified diff generation and patch application
-│   ├── dependency_mapper    AST-based Python import graph extraction
-│   ├── chunker              Token-budget-aware text splitting with overlap
-│   └── logger               Structured JSON logging
+├── utils/                      Shared utilities
+│   ├── diff_manager.py         Generate and apply unified diffs between text versions
+│   ├── dependency_mapper.py    Extract Python import graphs using AST parsing
+│   ├── chunker.py              Split text into token-budget-aware chunks with overlap
+│   └── logger.py               Structured JSON logging
 │
-├── configs/                 ⚙️  YAML configuration files
-├── prompts/                 📝 Agent system prompts (markdown)
-├── cli/                     💻 Command-line interface
-├── examples/                📚 Runnable example scripts
-└── tests/                   ✅ 69-test comprehensive pytest suite
+├── configs/                    YAML configuration files (described above)
+├── prompts/                    System prompts for each agent (Markdown files)
+├── cli/                        Command-line interface
+├── examples/                   Runnable example scripts
+└── tests/                      pytest test suite (69 tests)
 ```
-
-<br>
 
 ---
 
-<br>
+## Examples
 
-## 📊 Performance At a Glance
+The `examples/` directory contains runnable scripts that demonstrate different use cases.
 
-| Metric | Result |
-|--------|--------|
-| **Token reduction** | **40–70%** vs. sequential prompting |
-| **Execution speedup** | **3–10×** from parallel batch execution |
-| **Cache hit rate** | **80%+** on repeated/similar tasks |
-| **Test suite** | **69 tests**, all passing, <5s |
-| **Core dependencies** | **2** (PyYAML + tiktoken) |
-| **Setup time** | **30 seconds** |
-| **Model lock-in** | **Zero** — works with any backend |
-
-<br>
-
----
-
-<br>
-
-## 🚀 Real-World Examples
-
-### Example 1: Build a Complete Feature
+### Full Pipeline Example
 
 ```python
-from pipelines import build_repo_build_pipeline
+# examples/large_codebase_example.py
+from pipelines.repo_build_pipeline import build_repo_build_pipeline
 
-controller = build_repo_build_pipeline(my_model)
-result = controller.execute("build a user authentication system with JWT tokens")
-
-# result.merged_output contains:
-# - Planned architecture decisions
-# - Research on JWT best practices
-# - Complete implementation with file paths
-# - Code review findings
-# - Generated test suite
-# - Executive summary of everything built
+controller = build_repo_build_pipeline()  # Uses built-in EchoModel
+result = controller.execute("Build a modular service-oriented application architecture")
+print(result.merged_output)
 ```
 
-### Example 2: Research Before You Build
+### Research Example
 
 ```python
-from pipelines import build_research_pipeline
+# examples/research_project_example.py
+from pipelines.research_pipeline import build_research_pipeline
 
-controller = build_research_pipeline(my_model)
-result = controller.execute("compare WebSocket vs SSE for real-time notifications")
-
-# result.merged_output contains:
-# - Structured comparison with pros/cons
-# - Performance analysis
-# - Use-case recommendations
-# - Cited findings from the research phase
+controller = build_research_pipeline()
+result = controller.execute("Research state-of-the-art approaches for retrieval-augmented generation")
+print(result.merged_output)
 ```
 
-### Example 3: Token-Optimized Pipeline
+### Token-Optimized Pipeline
 
 ```python
-from pipelines import build_repo_build_pipeline
+# examples/token_optimized_pipeline.py
+from pipelines.repo_build_pipeline import build_repo_build_pipeline
 
-controller = build_repo_build_pipeline(
-    my_model,
+# Run without token infrastructure
+baseline = build_repo_build_pipeline()
+baseline_result = baseline.execute("Implement repository bootstrap workflow with tests")
+
+# Run with full token infrastructure enabled
+optimized = build_repo_build_pipeline(
     token_config={
         "prompt_schema_path": "configs/prompt_schema.yaml",
         "budgets_path": "configs/budgets.yaml",
@@ -571,60 +736,65 @@ controller = build_repo_build_pipeline(
         "retrieval_top_k": 3,
     }
 )
-result = controller.execute("implement repository bootstrap workflow")
-print(f"Tokens used: {result.metrics['tokens_used']}")  # 40-70% less than naive
+optimized_result = optimized.execute("Implement repository bootstrap workflow with tests")
+
+# Compare token usage
+print(f"Baseline tokens: {baseline_result.metrics.get('tokens_used', 0)}")
+print(f"Optimized tokens: {optimized_result.metrics.get('tokens_used', 0)}")
 ```
 
-<br>
-
 ---
 
-<br>
+## Testing
 
-## 🤝 Contributing
-
-We'd love your help making claude-swarm even better:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-thing`)
-3. **Add tests** for new functionality
-4. **Ensure** all 69+ tests pass with `pytest -v`
-5. **Submit** a pull request
-
-<br>
-
----
-
-<br>
-
-<div align="center">
-
-<br>
-
-## 🐝 Stop Prompting. Start Orchestrating.
-
-<br>
-
-**claude-swarm** turns one AI model into a **six-agent engineering team** that plans, researches, codes, reviews, tests, and delivers — automatically.
-
-<br>
-
-**Faster. Cheaper. Better.**
-
-<br>
-
-⭐ **Star this repo** if you're ready to stop copying and pasting prompts.
-
-<br>
+The project includes 69 tests covering every major component. Run them with:
 
 ```bash
-git clone https://github.com/reapersapprentice/claude-swarm.git && cd claude-swarm && pip install -e .
+pytest -v
 ```
 
-<br>
+The tests use the built-in `EchoModel`, so they don't require any API keys or network access. They complete in under 5 seconds.
 
-*Built for builders. Engineered for production.*
+**What's tested:**
 
-<br>
+| Test File | What It Covers |
+|-----------|---------------|
+| `test_agent_parse_safety.py` | All 6 agents handle malformed model responses gracefully |
+| `test_agent_registry.py` | Agent registration, lazy initialization, duplicate detection |
+| `test_cli.py` | Command-line argument parsing and command dispatch |
+| `test_context_cache.py` | LRU eviction, disk persistence, key generation |
+| `test_controller_error_paths.py` | Pre/post hooks, retry logic, cache hits, dry-run mode |
+| `test_diff_manager.py` | Unified diff generation and patch application |
+| `test_execution_graph.py` | DAG cycle detection, topological sorting, parallel groups |
+| `test_pipelines.py` | End-to-end pipeline integration |
+| `test_prompt_builder_extended.py` | Template assembly, encoding fallback, ruleset handling |
+| `test_state_store_extended.py` | TTL expiration, namespace isolation, persistence |
+| `test_swarm_controller.py` | Full execution flow, result merging, metric collection |
+| `test_task_router.py` | Plan parsing, keyword routing, capability validation |
+| `test_token_infra.py` | Prompt builder, token budget, retrieval pipeline integration |
+| `test_token_optimizer.py` | Deduplication, pruning, budget enforcement |
+| `test_vector_store_extended.py` | Similarity search, metadata storage, backend selection |
 
-</div>
+---
+
+## Contributing
+
+Contributions are welcome. Here's how to get started:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make your changes and add tests for new functionality
+4. Run the full test suite: `pytest -v`
+5. Submit a pull request
+
+### Guidelines
+
+- All new functionality should have corresponding tests
+- Follow the existing code style (type hints, docstrings, `from __future__ import annotations`)
+- Keep dependencies minimal — avoid adding new packages unless there's a strong reason
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
