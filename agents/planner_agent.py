@@ -63,7 +63,7 @@ class PlannerAgent(BaseAgent):
                         raise ValueError("Invalid planner node")
                     node.setdefault("dependencies", [])
                 return parsed
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError):
             pass
 
         return [

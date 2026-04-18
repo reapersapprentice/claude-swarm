@@ -56,7 +56,7 @@ class SummarizerAgent(BaseAgent):
             parsed = json.loads(raw)
             if isinstance(parsed, dict):
                 return parsed
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError):
             pass
         summary = raw.strip() or " ".join(context.split()[:120])
         return {"summary": summary}

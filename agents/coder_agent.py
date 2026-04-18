@@ -56,7 +56,7 @@ class CoderAgent(BaseAgent):
             parsed = json.loads(raw)
             if all(key in parsed for key in ("files", "explanation")):
                 return parsed
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError):
             pass
         return {
             "files": [{"path": "generated_output.txt", "content": raw.strip() or f"Code generation scaffold for: {task}"}],

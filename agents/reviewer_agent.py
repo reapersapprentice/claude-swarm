@@ -56,6 +56,6 @@ class ReviewerAgent(BaseAgent):
             parsed = json.loads(raw)
             if all(key in parsed for key in ("issues", "approved", "suggestions")):
                 return parsed
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError):
             pass
         return {"issues": [], "approved": True, "suggestions": [raw.strip() or "No suggestions"]}

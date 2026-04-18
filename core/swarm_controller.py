@@ -110,7 +110,8 @@ class SwarmController:
                         break
                     if not retries_enabled:
                         break
-                assert last_result is not None
+                if last_result is None:
+                    raise RuntimeError(f"Node '{node.id}' produced no result after all attempts")
                 node_results[node.id] = last_result
                 if not last_result.success and not node.optional:
                     break

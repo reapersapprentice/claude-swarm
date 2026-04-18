@@ -56,7 +56,7 @@ class TesterAgent(BaseAgent):
             parsed = json.loads(raw)
             if all(key in parsed for key in ("tests", "coverage_notes")):
                 return parsed
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError):
             pass
         return {
             "tests": [{"name": "test_placeholder", "code": f"def test_task_name():\n    assert '{task}'"}],

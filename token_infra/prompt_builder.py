@@ -51,7 +51,9 @@ class PromptBuilder:
         try:
             self._encoding = tiktoken.get_encoding(self.encoding_name)
             return self._encoding
-        except Exception:
+        except Exception as exc:
+            import warnings
+            warnings.warn(f"tiktoken encoding '{self.encoding_name}' unavailable, using word-based estimate: {exc}")
             self._encoding_failed = True
             return None
 

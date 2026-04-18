@@ -56,7 +56,7 @@ class ResearcherAgent(BaseAgent):
             parsed = json.loads(raw)
             if all(key in parsed for key in ("findings", "sources", "summary")):
                 return parsed
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError):
             pass
         return {
             "findings": [f"Analyzed task requirements for '{task}'"],

@@ -41,10 +41,14 @@ class VectorStore:
         """Return ranked similar documents."""
         if self.backend == "chromadb" and self._collection is not None:
             result = self._collection.query(query_texts=[query_text], n_results=top_k)
-            ids = result.get("ids", [[]])[0]
-            docs = result.get("documents", [[]])[0]
-            scores = result.get("distances", [[]])[0]
-            meta = result.get("metadatas", [[]])[0]
+            raw_ids = result.get("ids") or [[]]
+            raw_docs = result.get("documents") or [[]]
+            raw_scores = result.get("distances") or [[]]
+            raw_meta = result.get("metadatas") or [[]]
+            ids = raw_ids[0] if raw_ids else []
+            docs = raw_docs[0] if raw_docs else []
+            scores = raw_scores[0] if raw_scores else []
+            meta = raw_meta[0] if raw_meta else []
             rows: List[Dict[str, Any]] = []
             for idx, doc_id in enumerate(ids):
                 rows.append(
