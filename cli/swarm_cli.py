@@ -8,6 +8,7 @@ from typing import Any
 
 from memory.context_cache import ContextCache
 from pipelines import build_code_pipeline, build_repo_build_pipeline, build_research_pipeline
+from token_infra.subscription import SUBSCRIPTION_TIERS
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,6 +20,12 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("task", type=str)
     run_parser.add_argument("--pipeline", choices=["repo", "research", "code"], default="repo")
     run_parser.add_argument("--dry-run", action="store_true")
+    run_parser.add_argument(
+        "--subscription-tier",
+        choices=sorted(SUBSCRIPTION_TIERS),
+        default=None,
+        help="Override the subscription tier from config (e.g. free, pro, team, unlimited)",
+    )
 
     show_graph_parser = subparsers.add_parser("show-graph")
     show_graph_parser.add_argument("task", type=str)
@@ -26,16 +33,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("list-agents")
     subparsers.add_parser("clear-cache")
+    subparsers.add_parser("subscription-status", help="Show current subscription tier and usage")
     return parser
 
 
-def get_controller(pipeline: str) -> Any:
-    """Construct controller based on selected pipeline."""
+def get_controller(pipeline: str, subscription_tier: str | None = None) -> Any:
+    """Construct controller based on selected pipeline and optional tier override."""
+    # Build the controller; the config file provides the default tier.
     if pipeline == "research":
-        return build_research_pipeline()
-    if pipeline == "code":
-        return build_code_pipeline()
-    return build_repo_build_pipeline()
+        ctrl = build_research_pipeline()
+    elif pipeline == "code":
+        ctrl = build_code_pipeline()
+    else:
+        ctrl = build_repo_build_pipeline()
+
+    # If the user passed --subscription-tier, override what the config had.
+    if subscription_tier is not None:
+        from token_infra.subscription import SubscriptionRateLimiter
+        ctrl.subscription_limiter = SubscriptionRateLimiter(tier=subscription_tier)
+
+    return ctrl
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,7 +65,19 @@ def main(argv: list[str] | None = None) -> int:
         print("Cache cleared")
         return 0
 
-    controller = get_controller(getattr(args, "pipeline", "repo"))
+    if args.command == "subscription-status":
+        ctrl = get_controller("repo")
+        limiter = getattr(ctrl, "subscription_limiter", None)
+        if limiter is None:
+            print("No subscription tier configured.")
+        else:
+            print(json.dumps(limiter.get_status(), indent=2))
+        return 0
+
+    controller = get_controller(
+        getattr(args, "pipeline", "repo"),
+        getattr(args, "subscription_tier", None),
+    )
 
     if args.command == "list-agents":
         print("\n".join(controller.registry.list_agents()))
@@ -63,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
         }
         if args.dry_run:
             payload["graph"] = result.graph_visualization
+        # Include subscription usage if a limiter is active
+        limiter = getattr(controller, "subscription_limiter", None)
+        if limiter is not None:
+            payload["subscription"] = limiter.get_status()
         print(json.dumps(payload, indent=2))
         return 0
 

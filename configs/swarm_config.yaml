@@ -13,6 +13,17 @@ model:
   default_model: "claude-sonnet-4-20250514"
   temperature: 0.0
 
+# Subscription tier configuration — keeps usage within your plan limits.
+# Set "tier" to match your subscription: free, pro, team, or unlimited.
+# When tier is set to anything other than "unlimited", rate limits and
+# daily token caps are enforced so you never incur overage charges.
+subscription:
+  tier: "pro"
+  # Override any tier default below (optional):
+  # requests_per_minute: 25
+  # daily_token_cap: 300000
+  # max_tokens_per_request: 4096
+
 output:
   format: "structured"
   include_metrics: true
