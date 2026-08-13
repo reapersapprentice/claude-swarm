@@ -856,3 +856,9 @@ Contributions are welcome. Here's how to get started:
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+## Author & Developer
+
+**C.Studva**
